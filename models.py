@@ -4,23 +4,23 @@ import csv
 
 class Order:
     def __init__(self, symbol, quantity, price, status):
-        self.__symbol = symbol
-        self.__quantity = quantity
-        self.__price = price
-        self.__status = status
+        self.symbol = symbol
+        self.quantity = quantity
+        self.price = price
+        self.status = status
     
     def display(self):
-        return f"return f'{self.__status} {self.__quantity} shares of {self.__symbol} at ${self.__price:,} each"
+        return f"return f'{self.status} {self.quantity} shares of {self.symbol} at ${self.price:,} each"
     
     @property
     def status(self):
-        return self.__status
+        return self.status
     
     @status.setter
     def status(self, new_status):
         if new_status!='ask' and new_status!='bid':
             raise OrderError('Status must be a \'bid\' or \'ask\'')
-        self.__status = new_status
+        self.status = new_status
     
 class OrderError(Exception): 
     def __init__(self, message):
@@ -49,7 +49,5 @@ def load_market_data(path):
             l.append(temp)
     return l
 
-if __name__ == '__main__':
-    list = load_market_data('Assignment1_FINM32500/market_data.csv')
-    
+
 
