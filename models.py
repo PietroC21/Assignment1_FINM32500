@@ -8,19 +8,15 @@ class Order:
         self.quantity = quantity
         self.price = price
         self.status = status
-    
     def display(self):
         return f"return f'{self.status} {self.quantity} shares of {self.symbol} at ${self.price:,} each"
     
-    @property
-    def status(self):
-        return self.status
-    
-    @status.setter
-    def status(self, new_status):
-        if new_status!='ask' and new_status!='bid':
-            raise OrderError('Status must be a \'bid\' or \'ask\'')
-        self.status = new_status
+    def validate(self):  
+        if self.quantity <= 0:  
+            raise OrderError("Order quantity must be positive.")  
+        if self.status not in ("BUY", "SELL"):  
+            raise OrderError("Order action must be 'BUY' or 'SELL'.")  
+  
     
 class OrderError(Exception): 
     def __init__(self, message):
@@ -48,6 +44,4 @@ def load_market_data(path):
             temp = MarketDataPoint(timestamp, symbol, price)
             l.append(temp)
     return l
-
-
 
