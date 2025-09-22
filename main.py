@@ -1,9 +1,11 @@
 import csv  
-from typing import List  
+from typing import List, Dict, Any
 from data_generator import market_data_generator  
 from models import load_market_data  
+from collections import defaultdict
 from strategies import MovingAverageStrategy, MomentumStrategy  
 from engine import Engine  
+import matplotlib.pyplot as plt
 from reporting import save_report
 def generate_merged_market_csv(symbols: List[str],  
                                start_price:  List[float],  
@@ -37,49 +39,62 @@ def build_strategies_for_symbols(symbols: List[str]):
     Create a list of strategy instances, one MA and one Momentum per symbol.  
     Strategies are stateful and tied to the symbol passed in.  
     """  
-    strategies = []  
+    strategies:Dict[str,Any ] = defaultdict(list)
     for s in symbols:  
-        strategies.append(MovingAverageStrategy(symbol=s))  
-        strategies.append(MomentumStrategy(symbol=s))  
+        strategies[s].append(MovingAverageStrategy(symbol=s))
+        strategies[s].append(MomentumStrategy(symbol=s)) 
     return strategies  
   
-def strategy_factory_for_symbol(symbol: str):  
-    """  
-    Factory that returns fresh strategies for a single symbol (used in per_symbol mode).  
-    """  
-    return [  
-        MovingAverageStrategy(symbol=symbol, short_window=5, long_window=20, qty=5),  
-        MomentumStrategy(symbol=symbol, lookback=10, threshold=0.01, qty=5)  
-    ]  
-  
-def try_plot_equity(equity_curve, outpath="equity_curve.png"):  
-    try:  
-        import matplotlib.pyplot as plt  
-    except Exception:  
-        return None  
-    times = [t for (t, _) in equity_curve]  
-    values = [v for (_, v) in equity_curve]  
-    if not times:  
-        return None  
-    plt.figure(figsize=(10, 4))  
-    plt.plot(times, values, label="Equity")  
-    plt.xlabel("Time")  
-    plt.ylabel("Equity")  
-    plt.title("Equity Curve")  
-    plt.legend()  
-    plt.tight_layout()  
-    plt.savefig(outpath)  
-    plt.close()  
-    return outpath  
-  
+
+def try_plot_equity(equity_curve, outpath="equity_curve.png"):
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return None
+
+    if not equity_curve:
+        return None
+
+    plt.figure(figsize=(10, 4))
+
+    # Handle the new structure where equity_curve is a dict by symbol
+    if isinstance(equity_curve, dict):
+        for symbol, curve in equity_curve.items():
+            if not curve:
+                continue
+            # unzip (datetime, value) pairs
+            times, values = zip(*curve)
+            plt.plot(times, values, label=f"Equity {symbol}")
+    else:
+        # Fallback for old structure (list of curves)
+        for i, curve in enumerate(equity_curve):
+            if not curve:
+                continue
+            # unzip (datetime, value) pairs
+            times, values = zip(*curve)
+            plt.plot(times, values, label=f"Equity {i}")
+
+    if not plt.gca().has_data():
+        return None
+
+    plt.xlabel("Time")
+    plt.ylabel("Equity")
+    plt.title("Equity Curves by Symbol")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(outpath)
+    plt.close()
+    return outpath
+
+
 def main():  
 
     
-    ticks_per_symbol = 200
+    ticks_per_symbol = 500
     symbols = ['AAPL', 'MSFT', 'NVDA', 'META', 'AMC']
     #symbols = ['AAPL', 'MSFT']
     start_price = 150
-    volatilities = [0.02, 0.2, .2, 1.0, 0.3]
+    volatilities = [0.02, 0.2, .2, 1, 0.3]
     out_file = 'market_data.csv'
     
     
@@ -92,11 +107,13 @@ def main():
   
     
     # create strategy instances for each symbol and run them all on the merged time series  
-    strategies = build_strategies_for_symbols(symbols)  
+    strategies = build_strategies_for_symbols(symbols) 
+     
     engine = Engine()  
-    results = engine.run(ticks, strategies)  
+    results = engine.run(ticks, strategies) 
     metrics = engine.performance_metrics()  
-    equity_curve = results.get("equity_curve", engine.equity_curve)  
+    equity_curve = results.get("equity_curve", {})  
+    #print([j for i,j in equity_curve])
     image = try_plot_equity(equity_curve, outpath="equity_curve.png")  
     save_report("performance.md", metrics, equity_curve, image_path=image)  
     print("Backtest complete (time mode). Report written to performance.md")  

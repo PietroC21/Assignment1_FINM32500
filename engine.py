@@ -1,13 +1,9 @@
-from strategies import MovingAverageStrategy, MomentumStrategy
-from data_generator import generate_market_csv
 from models import *
 import logging
-from typing import List, Dict, Any, Tuple, Callable, Optional  
+from typing import List, Dict, Any
 from collections import defaultdict
 import numpy as np
 import random
-
-
 
 logger = logging.getLogger("Engine")  
 
@@ -18,13 +14,11 @@ class Engine:
         self.last_price: Dict[str, float] = {}
         self.positions: Dict[str, Dict[str, Any]] = defaultdict(lambda: {'quantity': 0, 'avg_price': 0.0})  
         self.equity_curve = []
+        self.equity_by_symbol = {}  # Store equity curves by symbol
         self.trades: List[Dict[str, Any]] = []  
-
-        # self.strategy = {}
-    
     
     def run(self, ticks, strategies):
-        
+        intial_cash = self.cash
         ticks_by_symbol: Dict[str, List[MarketDataPoint]] = defaultdict(list)        
         for t in ticks:
             ticks_by_symbol[t.symbol].append(t)
@@ -33,16 +27,23 @@ class Engine:
         for symbol, sym_ticks in ticks_by_symbol.items():
             sym_ticks.sort(key= lambda x: x.timestamp)
 
-            #set the strategy list to the list we already created
-            strat_list = strategies
-
-            res = self.__run(sym_ticks, strat_list)
+            #run each strategy 
+            res = self.__run(sym_ticks, strategies[symbol])
             results[symbol] = res
-        return results
+        return  {  
+            "initial_cash": intial_cash,  
+            "final_cash": self.cash,  
+            "positions": self.positions,  
+            "equity_curve": self.equity_by_symbol,  
+        }  
+    
     def __run(self, ticks:List[MarketDataPoint], strat_list: List[Any]):
         ticks = sorted(ticks, key= lambda t: t.timestamp)
         if not ticks:
             raise ExecutionError("No ticks were provided ")
+        
+        # Reset equity curve for this symbol
+        self.equity_curve = []
         
         for tick in ticks:
             #update the last price
@@ -58,7 +59,7 @@ class Engine:
                         signals.extend(sigs)
                 except Exception as e:
                     logger.exception(f"Strategy {type(strat).__name__} error on tick {tick}: {e}")  
-            
+                    continue
             # convert signals to Orders and execute them
             for sig in signals:
                 try:
@@ -68,8 +69,10 @@ class Engine:
                     order.validate()
                 except OrderError as eE:
                     logger.error(f"Order validation failed for signal {sig}: {eE}")
+                    continue
                 except Exception as e:
                       logger.exception(f"Error creating order from signal {sig}: {e}")  
+                      continue
 
                 #execute the order (each order handled independently)
                 try: 
@@ -81,16 +84,18 @@ class Engine:
                     logger.exception(f"Unexpected error executing order : {e}")  
                     continue  
         
-        # record equity after processing this tick  
-        equity = self._compute_equity()  
-        self.equity_curve.append((tick.timestamp, equity))
+                # record equity after processing this tick  
+                equity = self._compute_equity()  
+                self.equity_curve.append((tick.timestamp, equity))
         
-
-
+        # Store the equity curve for this symbol
+        if self.equity_curve:
+            symbol = ticks[0].symbol if ticks else "unknown"
+            self.equity_by_symbol[symbol] = self.equity_curve.copy()
     def execute_orders(self, order: Order, timestamp)->None:
         
         #Simulate occasional execution failure with 5% chance
-        if random.random() < 0.05:
+        if random.random() < 0.01:
             raise ExecutionError('Simulating Execution Failure!')
         
         symbol = order.symbol
@@ -137,20 +142,11 @@ class Engine:
             logger.info(f"FILLED BUY {qty} {symbol} @ {fill_price:.2f}. Cash: {self.cash:.2f}")
             
         elif action == "SELL":
-            new_qty = old_qty - qty
+            new_qty = 0
             proceeds = fill_price*qty
 
-            #average for selling logic:
-            if old_qty > 0 and new_qty > 0:  
-                new_avg = old_avg  
-            elif old_qty <= 0 and new_qty < 0:  
-                # adding to existing short: weighted average for short (by absolute quantities)  
-                if old_qty == 0:  
-                    new_avg = fill_price  
-                else:  
-                    new_avg = ((abs(old_qty) * old_avg) + (qty * fill_price)) / abs(new_qty)  
-            else:
-                 new_avg = fill_price if new_qty != 0 else 0.0  
+            #Update new_avg to zero
+            new_avg = fill_price if new_qty != 0 else 0.0  
             pos['avg_price'] = float(new_avg)
 
             self.cash += proceeds  
@@ -167,7 +163,6 @@ class Engine:
         else:
             raise ExecutionError(f"Unknown order action: {order.action}")  
 
-    
     def _compute_equity(self):
         '''Compute equity = cash + sum(position_qty * last_price) for all symbols.'''
         equity = self.cash

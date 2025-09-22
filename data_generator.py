@@ -6,6 +6,7 @@ import random
 import time
 import csv
 
+random.seed(42)
 @dataclass(frozen=True)
 class MarketDataPoint:
     timestamp: datetime.datetime

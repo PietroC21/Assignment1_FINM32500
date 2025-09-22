@@ -29,11 +29,19 @@ def save_report(filepath: str, metrics: Dict, equity_curve, image_path=None):
   
     lines.append("\n## Equity Curve\n")  
     if image_path and os.path.exists(image_path):  
-        lines.append(f"\!\[Equity Curve\] ({os.path.basename(image_path)})\n")  
+        lines.append(f"![Equity Curve]({os.path.basename(image_path)})\n")  
     else:  
-        eq_values = [v for (_, v) in equity_curve]  
-        lines.append("ASCII Sparkline:\n\n")  
-        lines.append("```\n" + ascii_sparkline(eq_values) + "\n```\n")  
+        # Handle new structure where equity_curve is a dict by symbol
+        if isinstance(equity_curve, dict):
+            for symbol, curve in equity_curve.items():
+                eq_values = [v for (_, v) in curve]  
+                lines.append(f"ASCII Sparkline for {symbol}:\n\n")  
+                lines.append("```\n" + ascii_sparkline(eq_values) + "\n```\n")
+        else:
+            # Fallback for old structure
+            eq_values = [v for (_, v) in equity_curve]  
+            lines.append("ASCII Sparkline:\n\n")  
+            lines.append("```\n" + ascii_sparkline(eq_values) + "\n```\n")  
   
     lines.append("\n## Short interpretation\n")  
     lines.append("This report shows the basic metrics computed from the backtest. "  
