@@ -16,3 +16,23 @@ Design and implement a modular Python backtester that reads pre-generated market
 * **reporting.py**: Generates a report file for our portfolio by using the performance metrics
 * **strategies.py**: Defines the signal generation for our two strategies: mean-reversion and momentum
 * **test.py**: Proves through a unit test that we can update Order.status but not MarketDataPoint.price
+
+## Running the Notebook
+### main.py
+The script runs a full backtest using your chosen data and strategy. To run it, simply use `python main.py` or provide optional arguments with
+`python main.py --data data/market_csv --strategy MovingAverageCrossover`
+where
+* `--data`: Path to the CSV file containing historical data
+* `--strategy`: Name of the strategy class to run
+The script will:
+* Load data from the CSV file
+* Execute the selected trading strategy
+* Print performance metrics
+* Save trade logs and plots (if enabled)
+
+### test.py
+The script ensures the integrity of key components (data loading, signal generation, backtesting engine). To run it, simply use `python test.py`. 
+This will:
+* Discover and execute all tests inside the `tests/` dictionary
+* Print a summary of passed/failed tests
+Use this command regularly to confirm changes do not break existing functionality
