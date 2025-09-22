@@ -41,14 +41,18 @@ class MovingAverageStrategy(Strategy):
         #detect signals
         if self.__prev_long_ma and self.__prev_short_ma:
             if self.__prev_short_ma<= self.__prev_long_ma and short_ma>=long_ma:
-                qty = self.__quantity
-                signals.append((("BUY", tick.symbol,self.__quantity, tick.price )))
-                self.__position+=qty
-                self.__last_signal='BUY'
+                # Only buy if we don't already have a position
+                if self.__position == 0:
+                    qty = self.__quantity
+                    signals.append((("BUY", tick.symbol,self.__quantity, tick.price )))
+                    self.__position+=qty
+                    self.__last_signal='BUY'
             elif self.__prev_short_ma >= self.__prev_long_ma and short_ma < long_ma:
-                signals.append((("SELL", tick.symbol,-self.__position, tick.price )))
-                self.__position = -self.__position
-                self.__last_signal='SELL'
+                # Only sell if we have a position to sell
+                if self.__position > 0:
+                    signals.append((("SELL", tick.symbol,self.__position, tick.price )))
+                    self.__position = 0  # Reset position to 0 after selling
+                    self.__last_signal='SELL'
 
         self.__prev_long_ma = long_ma
         self.__prev_short_ma = short_ma
@@ -70,9 +74,13 @@ class MomentumStrategy(Strategy):
         self.__quantity = 10
         self.__symbol = symbol
         self.__prices = deque(maxlen=self.__lookback)
+        self.__position = 0  # Track position
 
     def generate_signals(self, tick : MarketDataPoint):
         signals = []
+        if tick.symbol != self.__symbol:
+            return signals
+            
         self.__prices.append(tick.price)
 
         if len(self.__prices) == self.__lookback:
@@ -80,10 +88,14 @@ class MomentumStrategy(Strategy):
             increasing = all(self.__prices[i]<=self.__prices[i+1] for i in range(len(self.__prices)-1))
             decreasing = all(self.__prices[i]>=self.__prices[i+1] for i in range(len(self.__prices)-1))
 
-            if increasing:
+            if increasing and self.__position == 0:
+                # Only buy if we don't have a position
                 signals.append((("BUY", tick.symbol,self.__quantity, tick.price )))
-            elif decreasing:
-                signals.append((("SELL", tick.symbol,self.__quantity, tick.price )))
+                self.__position = self.__quantity
+            elif decreasing and self.__position > 0:
+                # Only sell if we have a position to sell
+                signals.append((("SELL", tick.symbol,self.__position, tick.price )))
+                self.__position = 0  # Reset position after selling
         return signals
         
         

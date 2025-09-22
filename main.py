@@ -92,15 +92,15 @@ def main():
     
     ticks_per_symbol = 500
     symbols = ['AAPL', 'MSFT', 'NVDA', 'META', 'AMC']
-    #symbols = ['AAPL', 'MSFT']
+    #symbols = ['AAPL']
     start_price = 150
-    volatilities = [0.02, 0.2, .2, 1, 0.3]
+    volatilities = [0.02, 0.002, .2, 1, 0.3]
     out_file = 'market_data.csv'
     
     
     generate_merged_market_csv(symbols, start_price, ticks_per_symbol, volatilities, out_file)  
 
-
+  
     # Load ticks from CSV into MarketDataPoint instances  
     ticks = load_market_data(out_file)  
     print(f"Loaded {len(ticks)} ticks from {out_file}")  

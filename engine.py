@@ -84,9 +84,9 @@ class Engine:
                     logger.exception(f"Unexpected error executing order : {e}")  
                     continue  
         
-                # record equity after processing this tick  
-                equity = self._compute_equity()  
-                self.equity_curve.append((tick.timestamp, equity))
+            # record equity after processing this tick (regardless of whether there were signals)
+            equity = self._compute_equity()  
+            self.equity_curve.append((tick.timestamp, equity))
         
         # Store the equity curve for this symbol
         if self.equity_curve:
@@ -142,12 +142,18 @@ class Engine:
             logger.info(f"FILLED BUY {qty} {symbol} @ {fill_price:.2f}. Cash: {self.cash:.2f}")
             
         elif action == "SELL":
-            new_qty = 0
-            proceeds = fill_price*qty
+            # Check if we have enough shares to sell
+            if old_qty < qty:
+                raise ExecutionError(f"Insufficient shares for SELL {qty} {symbol}: have {old_qty}, need {qty}")
+            
+            new_qty = old_qty - qty
+            proceeds = fill_price * qty
 
-            #Update new_avg to zero
-            new_avg = fill_price if new_qty != 0 else 0.0  
-            pos['avg_price'] = float(new_avg)
+            # Update position
+            pos['quantity'] = new_qty
+            # Update average price to zero if position is closed
+            if new_qty == 0:
+                pos['avg_price'] = 0.0
 
             self.cash += proceeds  
             order.status = "FILLED"  

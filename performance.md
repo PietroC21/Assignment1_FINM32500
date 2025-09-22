@@ -4,11 +4,11 @@
 
 | Metric | Value |
 |---|---:|
-| Initial equity | 98362.70 |
-| Final equity | 64506.10 |
-| Total return | -34.42% |
-| Sharpe (ann.) | -0.687 |
-| Max drawdown | 51.71% |
+| Initial equity | 94730.40 |
+| Final equity | 98311.50 |
+| Total return | 3.78% |
+| Sharpe (ann.) | 0.207 |
+| Max drawdown | 29.28% |
 
 ## Equity Curve
 
