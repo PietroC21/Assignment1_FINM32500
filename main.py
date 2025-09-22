@@ -100,15 +100,15 @@ def main():
     
     generate_merged_market_csv(symbols, start_price, ticks_per_symbol, volatilities, out_file)  
 
-  
+
     # Load ticks from CSV into MarketDataPoint instances  
     ticks = load_market_data(out_file)  
     print(f"Loaded {len(ticks)} ticks from {out_file}")  
-  
+
     
     # create strategy instances for each symbol and run them all on the merged time series  
     strategies = build_strategies_for_symbols(symbols) 
-     
+    
     engine = Engine()  
     results = engine.run(ticks, strategies) 
     metrics = engine.performance_metrics()  
